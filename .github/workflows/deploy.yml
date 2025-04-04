@@ -1,0 +1,67 @@
+name: Deploy to Cloud Run
+on:
+  workflow_dispatch:
+
+env:
+  FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+  FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+  FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+  FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+  FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+  FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+jobs:
+
+  deploy:
+    name: Deploy to Google Cloud Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_ACLOUD }}
+      
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          export_default_credentials: true
+      
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker southamerica-west1-docker.pkg.dev
+      
+      - name: Get Project ID
+        run: |
+          PROJECT_ID=$(gcloud config get-value project)
+          echo "PROJECT_ID=${PROJECT_ID}" >> $GITHUB_ENV
+      
+      - name: Build Docker image
+        run: |
+          docker build -t southamerica-west1-docker.pkg.dev/${PROJECT_ID}/acloud-br-gcp-gob-ti-bck-repo/gti-dev:latest .
+      
+      - name: Push Docker image
+        run: |
+          docker push southamerica-west1-docker.pkg.dev/${PROJECT_ID}/acloud-br-gcp-gob-ti-bck-repo/gti-dev:latest
+      
+      
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy gti-dev \
+            --image=southamerica-west1-docker.pkg.dev/${PROJECT_ID}/acloud-br-gcp-gob-ti-bck-repo/gti-dev:latest \
+            --platform=managed \
+            --region=southamerica-west1 \
+            --memory=1Gi \
+            --cpu=2 \
+            --min-instances=0 \
+            --max-instances=10 \
+            --set-env-vars="NEXT_PUBLIC_FIREBASE_API_KEY=${FIREBASE_API_KEY},NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN},NEXT_PUBLIC_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID},NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET},NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID},NEXT_PUBLIC_FIREBASE_APP_ID=${FIREBASE_APP_ID}" \
+            --service-account=rip-gti-dm-bck-iac-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+            --allow-unauthenticated 
+            # --set-env-vars "AZURE_AD_CLIENT_ID=${{ secrets.AZURE_AD_CLIENT_ID }}" \
+            # --set-env-vars "AZURE_AD_CLIENT_SECRET=${{ secrets.AZURE_AD_CLIENT_SECRET }}" \
+            # --set-env-vars "AZURE_AD_TENANT_ID=${{ secrets.AZURE_AD_TENANT_ID }}" \
+            # --set-env-vars "EXT_PUBLIC_API_URL=${{ secrets.EXT_PUBLIC_API_URL }}" \
+            # --set-env-vars "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" \
+            # --set-env-vars "NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}" 
