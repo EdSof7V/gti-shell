@@ -56,7 +56,6 @@ export const getGroups = async (skip: number = 0, limit: number = 100): Promise<
     const response = await api.get<Group[]>(`/groups?skip=${skip}&limit=${limit}`);
     return response.data;
   } catch (error) {
-    console.error("Error al obtener los grupos", error);
     throw error;
   }
 };
@@ -71,7 +70,6 @@ export const getUserGroupIds = async (userId: string): Promise<string[]> => {
     const response = await api.get<string[]>(`/group-user/user/${userId}/groups`);
     return response.data;
   } catch (error) {
-    console.error(`Error al obtener los IDs de grupos del usuario ${userId}:`, error);
     throw error;
   }
 };

@@ -36,10 +36,8 @@ export const getAuthToken = async (username: string, password: string): Promise<
       }
     );
     
-    console.log("Respuesta de autenticación:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error al obtener token de autenticación:", error);
     throw error;
   }
 };

@@ -29,22 +29,17 @@ export const AuthContextProvider: React.FC<AuthContextProviderProps> = ({ childr
     const [user, setUser] = useState<UserType | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
 
-    // Listen for Firebase auth state changes
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
             if (firebaseUser) {
-                // User is signed in
                 try {
-                    // Get the Google ID token
                     const token = await firebaseUser.getIdToken();
                     
-                    // Only set cookie if the provider is Google
                     const isGoogleProvider = firebaseUser.providerData.some(
                         provider => provider.providerId === 'google.com'
                     );
                     
                     if (isGoogleProvider) {
-                        // Set the token in a cookie for the middleware
                         Cookies.set('google-session-token', token, COOKIE_OPTIONS);
                     }
                     

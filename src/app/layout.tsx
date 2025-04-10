@@ -4,7 +4,7 @@ import "./globals.css";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthContextProvider } from "@/context/AuthContext";
-import { SessionProvider } from '@/context/SessionContext'; // Aj
+import { SessionProvider } from '@/context/SessionContext'; 
 
 const outfit = Outfit({
   variable: "--font-outfit-sans",

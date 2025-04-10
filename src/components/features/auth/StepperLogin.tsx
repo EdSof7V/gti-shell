@@ -9,6 +9,7 @@ import PasswordRequirementsTooltip from "./PasswordRequirementsTooltip";
 import axios from "axios";
 import { getAuthToken, TokenResponse } from "@/lib/services/authTokenService";
 import { useSession } from "@/context/SessionContext";
+import Cookies from "js-cookie";
 
 // Crear una instancia específica para el servicio de autenticación con tokens
 const authApi = axios.create({
@@ -93,8 +94,13 @@ export default function StepperLogin() {
                 isAuthenticated: true
             });
 
-            // También podríamos guardarlo en localStorage si es necesario
-            localStorage.setItem('auth_token', tokenResponse.access_token);
+            //localStorage.setItem('auth_token', tokenResponse.access_token);
+            Cookies.set('auth_token', tokenResponse.access_token, {
+                httpOnly: true,  
+                secure: true,
+                sameSite: 'Strict',
+                path: '/',
+            });
 
             console.log("Autenticación exitosa con token:", tokenResponse);
             return true;
@@ -277,12 +283,10 @@ export default function StepperLogin() {
                                 setError("Error al generar configuración MFA: " + (error.message || "Error desconocido"));
                             }
                         } else {
-                            // Si no requiere MFA, redirigir al dashboard
-                            router.push("/");
+                            router.push("/dashboard");
                             resetForm();
                         }
                     } else {
-                        // Si no tenemos el ID, mostramos un error
                         setError("No se pudo identificar al usuario correctamente. Por favor, inténtelo de nuevo.");
                         setLoading(false);
                     }
@@ -546,13 +550,7 @@ export default function StepperLogin() {
                         <p className="mb-4 text-sm text-gray-700 dark:text-gray-400">Escanea este código QR con tu aplicación de autenticación (Google Authenticator, Microsoft Authenticator o Authy).</p>
 
                         <div className="mx-auto flex flex-col items-center mb-4 p-4 border border-gray-200 rounded-lg shadow-sm bg-white dark:bg-gray-800 dark:border-gray-700">
-                            {/* Componente para mostrar el código QR */}
                             <MFAQRCode uri={mfaSetupData.uri} size={250} />
-
-                            {/* <div className="mt-4 text-center">
-                                <p className="font-medium text-gray-900 dark:text-white">Clave secreta:</p>
-                                <p className="text-sm break-all font-mono text-gray-700 dark:text-gray-400">{mfaSetupData.secret}</p>
-                            </div> */}
                         </div>
 
                         <p className="text-sm text-gray-700 dark:text-gray-400 mb-4">Una vez escaneado, ingresa el código generado por la aplicación:</p>

@@ -18,9 +18,11 @@ export interface ApplicationCreate {
 }
 
 export interface UserApplication {
+  id: string;
   name: string;
   description: string;
   url: string;
+  is_active: boolean;
 }
 
 export interface UserApplicationAssignment {
@@ -117,14 +119,37 @@ export const activateApplication = async (applicationId: string): Promise<Applic
 /**
  * Obtiene las aplicaciones a las que tiene acceso un usuario
  * @param userId ID del usuario
- * @returns Lista de aplicaciones con nombre, descripción y URL
+ * @returns Lista de aplicaciones con nombre, descripción, URL y estado
  */
 export const getUserApplications = async (userId: string): Promise<UserApplication[]> => {
   try {
+    console.log(`Obteniendo aplicaciones para el usuario: ${userId}`);
     const response = await api.get<UserApplication[]>(`/user-application/user/${userId}/apps`);
-    return response.data;
-  } catch (error) {
+    
+    // Log para depuración
+    console.log("Aplicaciones recibidas:", response.data);
+    
+    // Aseguramos que cada aplicación tenga las propiedades necesarias
+    const applications = response.data.map(app => ({
+      id: app.id || "",
+      name: app.name || "",
+      description: app.description || "",
+      url: app.url || "",
+      is_active: typeof app.is_active === 'boolean' ? app.is_active : true
+    }));
+    
+    return applications;
+  } catch (error: any) {
     console.error(`Error al obtener las aplicaciones del usuario ${userId}:`, error);
+    
+    // Información más detallada del error
+    if (error.response) {
+      console.error("Detalles de la respuesta del servidor:", {
+        status: error.response.status,
+        data: error.response.data
+      });
+    }
+    
     throw error;
   }
 };

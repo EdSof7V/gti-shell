@@ -127,7 +127,7 @@ export default function UserUpdateForm({ userId }: UserUpdateFormProps) {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Actualizar Usuario</h2>
         
         <Link 
-          href="/users"
+          href="/admin/users"
           className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
         >
           <svg 
@@ -261,7 +261,7 @@ export default function UserUpdateForm({ userId }: UserUpdateFormProps) {
           </button>
           
           <Link 
-            href="/users"
+            href="/admin/users"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ml-4 flex items-center"
           >
             <svg 

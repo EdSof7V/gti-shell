@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getUsers, User } from "@/lib/services/userService";
+// No necesitamos importar el modal
 
 interface Column {
   accessor: string;
@@ -13,6 +14,7 @@ const UserTable: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Record<string, any>[]>([]);
+  // Ya no necesitamos estados para el modal
 
   // Definición de las columnas exactamente como vienen del endpoint
   const columns: Column[] = [
@@ -77,6 +79,8 @@ const UserTable: React.FC = () => {
         String(value).toLowerCase().includes(searchTerm.toLowerCase());
     })
   );
+
+  // Ya no necesitamos funciones para abrir/cerrar el modal
 
   if (loading) {
     return (
@@ -181,6 +185,19 @@ const UserTable: React.FC = () => {
                 ))}
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-2">
+                    <Link href={`/admin/users/${row.id}/roles`}>
+                      <button
+                        type="button"
+                        className="text-purple-700 border border-purple-700 hover:bg-purple-700 hover:text-white focus:ring-4 focus:outline-none focus:ring-purple-300 font-medium rounded-lg text-sm p-2.5 text-center inline-flex items-center me-2 dark:border-purple-500 dark:text-purple-500 dark:hover:text-white dark:focus:ring-purple-800 dark:hover:bg-purple-500"
+                        title="Gestionar roles por aplicación"
+                      >
+                        <svg className="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span className="sr-only">Gestionar aplicaciones del usuario</span>
+                      </button>
+                    </Link>
+
                     <Link href={`/admin/users/edit/${row.id}`}>
                       <button 
                         type="button" 
@@ -217,6 +234,8 @@ const UserTable: React.FC = () => {
           )}
         </tbody>
       </table>
+      
+      {/* Ya no usamos el modal */}
     </div>
   );
 };

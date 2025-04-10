@@ -3,47 +3,41 @@ import React, { useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createApplication } from "@/lib/services/applicationService";
+import { createRole, RoleCreate } from "@/lib/services/roleService";
 
-interface ApplicationCreate {
-  name: string;
-  application_key: string;
-  description: string;
-  version: string;
-}
-
-const commonVersions = [
-  { value: "1.0.0", label: "1.0.0" },
-  { value: "1.0.1", label: "1.0.1" },
-  { value: "1.1.0", label: "1.1.0" },
-  { value: "2.0.0", label: "2.0.0" },
-];
-
-export default function AddApplicationForm() {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ApplicationCreate>();
+export default function AddRoleForm() {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<RoleCreate>();
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const router = useRouter();
 
-  const onSubmit: SubmitHandler<ApplicationCreate> = async (data) => {
+  const onSubmit: SubmitHandler<RoleCreate> = async (data) => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await createApplication(data);
-      console.log("Aplicación creada:", result);
+      // Convertir el código de rol a mayúsculas
+      const formattedData = {
+        ...data,
+        role_code: data.role_code.toUpperCase()
+      };
+      
+      const result = await createRole(formattedData);
+      console.log("Rol creado:", result);
       setSuccess(true);
       
+      // Resetear el formulario
       reset();
       
+      // Ocultar el mensaje de éxito después de 3 segundos
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
       
     } catch (err: any) {
-      console.error("Error al crear la aplicación:", err);
-      setError(err.response?.data?.message || err.message || "Error al crear la aplicación");
+      console.error("Error al crear el rol:", err);
+      setError(err.response?.data?.message || err.message || "Error al crear el rol");
     } finally {
       setLoading(false);
     }
@@ -52,11 +46,11 @@ export default function AddApplicationForm() {
   return (
     <div className="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Crear Aplicación</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Crear Rol</h2>
         
         {success && (
           <Link 
-            href="/admin/apps"
+            href="/roles/"
             className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             <svg 
@@ -73,7 +67,7 @@ export default function AddApplicationForm() {
                 d="M11 17l-5-5m0 0l5-5m-5 5h12" 
               />
             </svg>
-            Regresar a Aplicaciones
+            Regresar a Roles
           </Link>
         )}
       </div>
@@ -86,10 +80,10 @@ export default function AddApplicationForm() {
       
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          ¡Aplicación creada exitosamente!
+          ¡Rol creado exitosamente!
           <div className="mt-2">
             <button 
-              onClick={() => router.push('/admin/apps')} 
+              onClick={() => router.push('/roles/')} 
               className="flex items-center text-green-700 hover:text-green-900 font-medium"
             >
               <svg 
@@ -106,7 +100,7 @@ export default function AddApplicationForm() {
                   d="M11 17l-5-5m0 0l5-5m-5 5h12" 
                 />
               </svg>
-              Ver todas las aplicaciones
+              Ver todos los roles
             </button>
           </div>
         </div>
@@ -115,15 +109,15 @@ export default function AddApplicationForm() {
       <form className="mx-auto" onSubmit={handleSubmit(onSubmit)}>
         <div className="mb-5">
           <label htmlFor="name" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Nombre de la Aplicación
+            Nombre del Rol
             <span className="text-red-500 ml-1">*</span>
           </label>
           <input 
             id="name"
             type="text" 
             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
-            placeholder="Ingrese el nombre de la aplicación"
-            {...register("name", { required: "El nombre de la aplicación es obligatorio" })}
+            placeholder="Ingrese el nombre del rol"
+            {...register("name", { required: "El nombre del rol es obligatorio" })}
           />
           {errors.name && (
             <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
@@ -131,72 +125,41 @@ export default function AddApplicationForm() {
         </div>
         
         <div className="mb-5">
-          <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Descripción
+          <label htmlFor="role_code" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
+            Código del Rol
             <span className="text-red-500 ml-1">*</span>
           </label>
+          <input 
+            id="role_code"
+            type="text" 
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
+            placeholder="Ej: ADM, USR, EDIT"
+            maxLength={5}
+            {...register("role_code", { 
+              required: "El código del rol es obligatorio",
+              pattern: {
+                value: /^[A-Za-z0-9]{2,5}$/,
+                message: "El código debe consistir de 2-5 caracteres alfanuméricos"
+              }
+            })}
+          />
+          {errors.role_code && (
+            <p className="text-red-500 text-sm mt-1">{errors.role_code.message}</p>
+          )}
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Utilice un código corto (2-5 caracteres) para identificar el rol. Se convertirá automáticamente a mayúsculas.
+          </p>
+        </div>
+        
+        <div className="mb-5">
+          <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Descripción</label>
           <textarea 
             id="description"
             rows={3}
             className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
-            placeholder="Ingrese una descripción para la aplicación"
-            {...register("description", { required: "La descripción es obligatoria" })}
+            placeholder="Ingrese una descripción para el rol"
+            {...register("description")}
           />
-          {errors.description && (
-            <p className="text-red-500 text-sm mt-1">{errors.description.message}</p>
-          )}
-        </div>
-        
-        <div className="mb-5">
-          <label htmlFor="application_key" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Clave de Aplicación
-            <span className="text-red-500 ml-1">*</span>
-          </label>
-          <input 
-            id="application_key"
-            type="text" 
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
-            placeholder="GTI"
-            {...register("application_key", { 
-              required: "La clave de la aplicación es obligatoria",
-              pattern: {
-                value: /^[a-zA-Z0-9-_]+$/,
-                message: "La clave solo puede contener letras, números, guiones y guiones bajos"
-              }
-            })}
-          />
-          {errors.application_key && (
-            <p className="text-red-500 text-sm mt-1">{errors.application_key.message}</p>
-          )}
-        </div>
-        
-        <div className="mb-5">
-          <label htmlFor="version" className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-            Versión
-            <span className="text-red-500 ml-1">*</span>
-          </label>
-          <input
-            id="version"
-            type="text"
-            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-            placeholder="1.0.0"
-            list="version-options"
-            {...register("version", { 
-              required: "La versión es obligatoria",
-              pattern: {
-                value: /^\d+\.\d+\.\d+$/,
-                message: "Utilice el formato semántico de versiones (ej. 1.0.0)"
-              }
-            })}
-          />
-          <datalist id="version-options">
-            {commonVersions.map((version) => (
-              <option key={version.value} value={version.value} />
-            ))}
-          </datalist>
-          {errors.version && (
-            <p className="text-red-500 text-sm mt-1">{errors.version.message}</p>
-          )}
         </div>
         
         <div className="flex items-center justify-between">
@@ -205,11 +168,11 @@ export default function AddApplicationForm() {
             disabled={loading}
             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? "Creando..." : "Crear Aplicación"}
+            {loading ? "Creando..." : "Crear Rol"}
           </button>
           
           <Link 
-            href="/admin/apps/"
+            href="/admin/roles/"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 ml-4 flex items-center"
           >
             <svg 

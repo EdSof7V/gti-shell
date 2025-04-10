@@ -1,6 +1,9 @@
 
 import UserInfoCard from "@/components/features/user/user-profile/UserInfoCard";
 import UserMetaCard from "@/components/features/user/user-profile/UserMetaCard";
+import UserProfileDetails from "@/components/features/user/user-profile/UserProfileDetails";
+import UserDetails from "@/components/features/user/UserDetails";
+import { useSession } from "@/context/SessionContext";
 import { Metadata } from "next";
 import React from "react";
 
@@ -9,6 +12,7 @@ export const metadata: Metadata = {
   description:
     "GTI User Profile Pagee",
 };
+
 
 export default function Profile() {
   return (
@@ -19,8 +23,7 @@ export default function Profile() {
         </h3>
         <div className="space-y-6">
           <UserMetaCard />
-          <UserInfoCard />
-         {/*  <UserAddressCard /> */}
+          <UserProfileDetails/>
         </div>
       </div>
     </div>

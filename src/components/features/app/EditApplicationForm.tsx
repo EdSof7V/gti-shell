@@ -1,17 +1,15 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createApplication } from "@/lib/services/applicationService";
+import { getApplicationById, updateApplication, ApplicationCreate } from "@/lib/services/applicationService";
 
-interface ApplicationCreate {
-  name: string;
-  application_key: string;
-  description: string;
-  version: string;
+interface EditApplicationFormProps {
+  applicationId: string;
 }
 
+// Lista de versiones comunes para facilitar la entrada
 const commonVersions = [
   { value: "1.0.0", label: "1.0.0" },
   { value: "1.0.1", label: "1.0.1" },
@@ -19,63 +17,102 @@ const commonVersions = [
   { value: "2.0.0", label: "2.0.0" },
 ];
 
-export default function AddApplicationForm() {
+export default function EditApplicationForm({ applicationId }: EditApplicationFormProps) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ApplicationCreate>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchApplicationData = async () => {
+      try {
+        setInitialLoading(true);
+        setError(null);
+        
+        const application = await getApplicationById(applicationId);
+        
+        if (application) {
+          // Establecer valores por defecto en el formulario
+          reset({
+            name: application.name,
+            application_key: application.application_key,
+            description: application.description,
+            version: application.version,
+            url: application.url || '' 
+          });
+        } else {
+          setError("No se encontró la aplicación especificada");
+        }
+      } catch (err: any) {
+        console.error("Error al cargar datos de la aplicación:", err);
+        setError(err.response?.data?.message || "Error al cargar datos de la aplicación");
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    if (applicationId) {
+      fetchApplicationData();
+    }
+  }, [applicationId, reset]);
 
   const onSubmit: SubmitHandler<ApplicationCreate> = async (data) => {
     setLoading(true);
     setError(null);
     
     try {
-      const result = await createApplication(data);
-      console.log("Aplicación creada:", result);
+      const result = await updateApplication(applicationId, data);
+      console.log("Aplicación actualizada:", result);
       setSuccess(true);
       
-      reset();
-      
+      // Ocultar el mensaje de éxito después de 3 segundos
       setTimeout(() => {
         setSuccess(false);
       }, 3000);
       
     } catch (err: any) {
-      console.error("Error al crear la aplicación:", err);
-      setError(err.response?.data?.message || err.message || "Error al crear la aplicación");
+      console.error("Error al actualizar la aplicación:", err);
+      setError(err.response?.data?.message || err.message || "Error al actualizar la aplicación");
     } finally {
       setLoading(false);
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800 flex justify-center items-center min-h-[16rem]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Crear Aplicación</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Editar Aplicación</h2>
         
-        {success && (
-          <Link 
-            href="/admin/apps"
-            className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        <Link 
+          href="/admin/apps/"
+          className="flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5 mr-1" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 mr-1" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M11 17l-5-5m0 0l5-5m-5 5h12" 
-              />
-            </svg>
-            Regresar a Aplicaciones
-          </Link>
-        )}
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M11 17l-5-5m0 0l5-5m-5 5h12" 
+            />
+          </svg>
+          Regresar a Aplicaciones
+        </Link>
       </div>
       
       {error && (
@@ -86,29 +123,7 @@ export default function AddApplicationForm() {
       
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          ¡Aplicación creada exitosamente!
-          <div className="mt-2">
-            <button 
-              onClick={() => router.push('/admin/apps')} 
-              className="flex items-center text-green-700 hover:text-green-900 font-medium"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5 mr-1" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M11 17l-5-5m0 0l5-5m-5 5h12" 
-                />
-              </svg>
-              Ver todas las aplicaciones
-            </button>
-          </div>
+          ¡Aplicación actualizada exitosamente!
         </div>
       )}
       
@@ -205,7 +220,7 @@ export default function AddApplicationForm() {
             disabled={loading}
             className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            {loading ? "Creando..." : "Crear Aplicación"}
+            {loading ? "Guardando..." : "Guardar Cambios"}
           </button>
           
           <Link 

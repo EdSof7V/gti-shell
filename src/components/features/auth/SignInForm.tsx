@@ -11,7 +11,7 @@ export default function SignInForm() {
           <div className="mb-5 sm:mb-8 text-center">
             <Image
               width={200}
-              height={100}
+              height={200}
               src="/images/logo/br-logo.jpg"
               alt="User"
               className="mx-auto mb-8"
