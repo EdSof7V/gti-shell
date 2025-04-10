@@ -11,6 +11,17 @@ import {
   UserCircleIcon,
 } from "../../../icons/index";
 import { useSidebar } from "@/context/SidebarContext";
+import { useSession } from "@/context/SessionContext";
+import { jwtDecode } from "jwt-decode";
+
+// Interfaz para el token decodificado
+interface DecodedToken {
+  sub?: string;
+  role?: string[];
+  exp?: number;
+  iat?: number;
+  // otros campos que pueda tener el token
+}
 
 type NavItem = {
   name: string;
@@ -49,13 +60,40 @@ const adminItems: NavItem[] = [
   },
 ];
 
-interface AppSidebarProps {
-  userRole?: 'admin' | 'user'; // Only admin or user roles
+// Función segura para decodificar el token
+function safelyDecodeToken(token: string): DecodedToken | null {
+  try {
+    return jwtDecode(token) as DecodedToken;
+  } catch (error) {
+    return null;
+  }
 }
 
-const AppSidebar: React.FC<AppSidebarProps> = ({ userRole = 'admin' }) => {
+// Función para determinar si el usuario es administrador
+function isUserAdmin(roles?: string[]): boolean {
+  if (!roles || !Array.isArray(roles)) return false;
+  return roles.includes("GTI:ADM");
+}
+
+const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const { session } = useSession();
+  
+  // Determinar el rol del usuario a partir del token
+  const decodedToken: DecodedToken | null = session?.accessToken 
+    ? safelyDecodeToken(session.accessToken) 
+    : null;
+  
+  const userId = decodedToken?.sub || null;
+  const userRoles = decodedToken?.role || [];
+  
+  // Verificar si el usuario tiene rol de administrador
+  const isAdmin = isUserAdmin(userRoles);
+  
+  // Log para debugging
+  useEffect(() => {
+  }, [decodedToken, userId, userRoles, isAdmin]);
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -314,8 +352,8 @@ const AppSidebar: React.FC<AppSidebarProps> = ({ userRole = 'admin' }) => {
               {renderMenuItems(navItems, "main")}
             </div>
 
-            {/* Admin-only section */}
-            {userRole === 'admin' && (
+            {/* Admin-only section - solo visible si el usuario tiene el rol GTI:ADM */}
+            {isAdmin && (
               <div>
                 <h2
                   className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${

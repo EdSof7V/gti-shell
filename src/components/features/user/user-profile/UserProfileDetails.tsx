@@ -32,7 +32,6 @@ const UserProfileDetails = () => {
     try {
       return jwtDecode(token) as DecodedToken;
     } catch (error) {
-      console.error("Error al decodificar el token:", error);
       return null;
     }
   }

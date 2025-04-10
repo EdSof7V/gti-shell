@@ -51,15 +51,16 @@ export const getApplicationRoles = async (skip: number = 0, limit: number = 100)
 };
 
 /**
- * Obtiene los roles específicos para una aplicación
+ * Obtiene los roles específicos para una aplicación usando el endpoint directo
  * @param applicationId ID de la aplicación
  * @returns Lista de roles asociados a la aplicación
  */
 export const getRolesByApplicationId = async (applicationId: string): Promise<ApplicationRole[]> => {
   try {
-    // Obtenemos todos los roles de aplicaciones y filtramos por ID de aplicación
-    const allAppRoles = await getApplicationRoles(0, 1000);
-    return allAppRoles.filter(appRole => appRole.application_id === applicationId);
+    console.log(`Obteniendo roles para la aplicación con ID: ${applicationId}`);
+    // Usar el endpoint específico para obtener roles por ID de aplicación
+    const response = await api.get<ApplicationRole[]>(`/application-roles/application/${applicationId}`);
+    return response.data;
   } catch (error) {
     console.error(`Error al obtener los roles para la aplicación ${applicationId}:`, error);
     throw error;

@@ -391,27 +391,22 @@ export default function AppAssignment() {
     try {
       setSaveStatus('loading');
       const changedAssignments = getChangedAssignments();
-      console.log("Asignaciones modificadas a guardar:", changedAssignments);
       
       if (changedAssignments.length === 0) {
-        alert("No hay cambios que guardar");
         setSaveStatus('idle');
         return;
       }
 
       // Enviar solo los cambios al backend
       const savedAssignments = await createUserApplicationAssignments(changedAssignments);
-      console.log("Asignaciones guardadas exitosamente:", savedAssignments);
 
       // Actualizar las asignaciones originales para reflejar el nuevo estado
       setOriginalAssignments([...assignments]);
       
       setSaveStatus('success');
-      alert(`${changedAssignments.length} asignaciones guardadas correctamente`);
     } catch (error) {
       console.error("Error al guardar las asignaciones:", error);
       setSaveStatus('error');
-      alert(`Error al guardar las asignaciones: ${error.message || "Por favor, inténtelo de nuevo."}`);
     } finally {
       // Volver al estado inicial después de 3 segundos
       setTimeout(() => {

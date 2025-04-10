@@ -6,18 +6,9 @@ import MFAQRCode from "../auth/MFAQRCode";
 import { generateMFASecret, verifyMFACode, verifyMFASetup } from "@/lib/services/mfaService";
 import { validateUsername, updateUser, UpdateUserRequest, updateNewUserPassword } from "@/lib/services/authService";
 import PasswordRequirementsTooltip from "./PasswordRequirementsTooltip";
-import axios from "axios";
-import { getAuthToken, TokenResponse } from "@/lib/services/authTokenService";
+import { getAuthToken } from "@/lib/services/authTokenService";
 import { useSession } from "@/context/SessionContext";
 import Cookies from "js-cookie";
-
-// Crear una instancia específica para el servicio de autenticación con tokens
-const authApi = axios.create({
-    baseURL: "https://acloud-br-gcp-gob-ti-auth-1028436318023.southamerica-west1.run.app",
-    headers: {
-        "Content-Type": "application/json",
-    }
-});
 
 interface User {
     id?: string;
@@ -42,16 +33,6 @@ interface MFASetupData {
     secret: string;
     uri: string;
 }
-
-// Mantener los datos dummy para pruebas
-const mockUsers: User[] = [
-    { id: "3fa85f64-5717-4562-b3fc-2c963f66afa1", username: "jose.alegre", password: "123456", requiresMFA: false, hasMFAConfigured: false },
-    { id: "3fa85f64-5717-4562-b3fc-2c963f66afa2", username: "banco.ripley", password: "123456", requiresMFA: true, hasMFAConfigured: true },
-    { id: "3fa85f64-5717-4562-b3fc-2c963f66afa3", username: "nuevo.usuario", password: "", requiresMFA: true, hasMFAConfigured: true, isNewUser: true },
-];
-
-// Función para obtener token de autenticación
-
 
 export default function StepperLogin() {
     const [step, setStep] = useState<"username" | "password" | "setPassword" | "mfa" | "setupMFA">("username");
@@ -81,9 +62,6 @@ export default function StepperLogin() {
         try {
             setLoading(true);
             const tokenResponse = await getAuthToken(username, password);
-            console.log("Token recibido:", tokenResponse);
-
-            // Guardar el token en el estado
             setAuthToken(tokenResponse);
 
             // Guardar en el contexto de sesión
@@ -94,18 +72,15 @@ export default function StepperLogin() {
                 isAuthenticated: true
             });
 
-            //localStorage.setItem('auth_token', tokenResponse.access_token);
+            // Guardar el token como cookie
             Cookies.set('auth_token', tokenResponse.access_token, {
-                httpOnly: true,  
                 secure: true,
                 sameSite: 'Strict',
                 path: '/',
             });
 
-            console.log("Autenticación exitosa con token:", tokenResponse);
             return true;
         } catch (error: any) {
-            console.error("Error de autenticación con token:", error);
             setError("Credenciales incorrectas o problema de autenticación");
             return false;
         } finally {
@@ -120,73 +95,29 @@ export default function StepperLogin() {
         try {
             if (step === "username") {
                 try {
-                    // Intentamos validar el usuario con el endpoint
                     const validationResponse = await validateUsername(data.username);
-                    console.log("Validación de usuario:", validationResponse);
+                    
+                    // Crear un objeto de usuario con los datos de la validación
+                    const validatedUser: User = {
+                        id: validationResponse.id,
+                        username: data.username,
+                        password: "",
+                        requiresMFA: validationResponse.exists ? validationResponse.mfa_is_required : false,
+                        hasMFAConfigured: validationResponse.exists ? validationResponse.mfa_is_actived : false,
+                        isNewUser: validationResponse.exists ? validationResponse.is_new_user : false
+                    };
 
-                    // Buscar en los datos de prueba para mantener compatibilidad
-                    const foundUser = mockUsers.find((u) => u.username === data.username);
+                    setUser(validatedUser);
 
-                    if (foundUser) {
-                        // Si existe en datos de prueba, usamos esa información y agregamos el ID recibido
-                        foundUser.isNewUser = validationResponse.exists ? validationResponse.is_new_user : foundUser.isNewUser;
-                        // Asegurarse de usar el ID recibido de la API
-                        foundUser.id = validationResponse.id || foundUser.id;
-                        setUser(foundUser);
-
-                        // Determinar el siguiente paso basado en la validación si existe
-                        if (validationResponse.exists && validationResponse.is_new_user) {
-                            setStep("setPassword");
-                        } else {
-                            setStep("password");
-                        }
+                    // Determinar el siguiente paso
+                    if (validationResponse.exists && validationResponse.is_new_user) {
+                        setStep("setPassword");
                     } else {
-                        // Si no está en datos de prueba, usamos la validación
-                        const validatedUser: User = {
-                            id: validationResponse.id, // Guardar el ID recibido de la API
-                            username: data.username,
-                            password: "",
-                            requiresMFA: validationResponse.exists ? validationResponse.mfa_is_required : false,
-                            hasMFAConfigured: validationResponse.exists ? validationResponse.mfa_is_actived : false,
-                            isNewUser: validationResponse.exists ? validationResponse.is_new_user : false
-                        };
-
-                        setUser(validatedUser);
-
-                        // Determinar el siguiente paso
-                        if (validationResponse.exists && validationResponse.is_new_user) {
-                            setStep("setPassword");
-                        } else {
-                            setStep("password");
-                        }
-                    }
-                } catch (error: any) {
-                    // En caso de error, continuamos con la lógica existente
-                    console.error("Error al validar usuario:", error);
-
-                    const foundUser = mockUsers.find((u) => u.username === data.username);
-
-                    if (foundUser) {
-                        setUser(foundUser);
-
-                        if (!foundUser.password) {
-                            setStep("setPassword");
-                        } else {
-                            setStep("password");
-                        }
-                    } else {
-                        // Creamos un usuario por defecto
-                        const defaultUser: User = {
-                            username: data.username,
-                            password: "",
-                            requiresMFA: false,
-                            hasMFAConfigured: false,
-                            isNewUser: false
-                        };
-
-                        setUser(defaultUser);
                         setStep("password");
                     }
+                } catch (error: any) {
+                    setError("Error al validar el usuario");
+                    setLoading(false);
                 }
             }
             else if (step === "password" && user) {
@@ -195,7 +126,6 @@ export default function StepperLogin() {
                     const authSuccess = await authenticateWithToken(user.username, data.password || "");
 
                     if (!authSuccess) {
-                        // El error ya está establecido en la función authenticateWithToken
                         setLoading(false);
                         return;
                     }
@@ -209,27 +139,24 @@ export default function StepperLogin() {
                                 setMfaSetupData(mfaData);
                                 setStep("setupMFA");
                             } catch (error: any) {
-                                console.error("Error generando secreto MFA:", error);
-                                setError("Error al generar configuración MFA: " + (error.message || "Error desconocido"));
+                                setError("Error al generar configuración MFA");
                             }
                         } else {
                             setStep("mfa");
                         }
                     } else {
                         // Si no requiere MFA, redirigir al dashboard
-                        router.push("/login");
+                        router.push("/dashboard");
                         resetForm();
                     }
                 } catch (error: any) {
-                    console.error("Error en la autenticación:", error);
-                    setError("Error al procesar la autenticación: " + (error.message || "Error desconocido"));
+                    setError("Error al procesar la autenticación");
                     setLoading(false);
                 }
             }
             else if (step === "setPassword" && user) {
-                // Verificar que el usuario sea realmente nuevo si tenemos esa información
+                // Verificar que el usuario sea realmente nuevo
                 if (user.isNewUser === false) {
-                    console.warn("Un usuario que no es nuevo está intentando cambiar contraseña en el paso setPassword");
                     setError("Esta operación solo está permitida para usuarios nuevos");
                     setLoading(false);
                     return;
@@ -248,15 +175,10 @@ export default function StepperLogin() {
                 }
 
                 try {
-                    // Verificamos si tenemos el ID del usuario
                     if (user.id) {
-                        // Llamamos a la función actualizada para cambiar la contraseña
-                        console.log("Actualizando contraseña para usuario nuevo:", user.id);
-
                         const updatedUser = await updateNewUserPassword(user.id, data.newPassword || "");
-                        console.log("Usuario actualizado:", updatedUser);
 
-                        // Ahora autenticamos con el nuevo usuario y contraseña
+                        // Autenticar con el nuevo usuario y contraseña
                         const authSuccess = await authenticateWithToken(user.username, data.newPassword || "");
 
                         if (!authSuccess) {
@@ -279,20 +201,18 @@ export default function StepperLogin() {
                                 setMfaSetupData(mfaData);
                                 setStep("setupMFA");
                             } catch (error: any) {
-                                console.error("Error generando secreto MFA:", error);
-                                setError("Error al generar configuración MFA: " + (error.message || "Error desconocido"));
+                                setError("Error al generar configuración MFA");
                             }
                         } else {
                             router.push("/dashboard");
                             resetForm();
                         }
                     } else {
-                        setError("No se pudo identificar al usuario correctamente. Por favor, inténtelo de nuevo.");
+                        setError("No se pudo identificar al usuario correctamente");
                         setLoading(false);
                     }
                 } catch (error: any) {
-                    console.error("Error al actualizar el usuario:", error);
-                    setError("Error al actualizar la contraseña: " + (error.message || "Error desconocido"));
+                    setError("Error al actualizar la contraseña");
                     setLoading(false);
                 }
             }
@@ -306,11 +226,9 @@ export default function StepperLogin() {
                     );
 
                     if (result.success) {
-                        // Si la verificación fue exitosa, actualizar solamente el atributo mfa_is_actived
+                        // Si la verificación fue exitosa, actualizar atributo mfa_is_actived
                         if (user.id) {
                             try {
-                                console.log(`Actualizando estado MFA para usuario ${user.id}`);
-
                                 // Crear un objeto que solo contenga el campo mfa_is_actived
                                 const updateData: UpdateUserRequest = {
                                     mfa_is_actived: true
@@ -318,21 +236,18 @@ export default function StepperLogin() {
 
                                 // Llamar al endpoint para actualizar únicamente este campo
                                 const updatedUser = await updateUser(user.id, updateData);
-                                console.log("Estado MFA actualizado:", updatedUser);
 
                                 // Actualizar el usuario local
                                 user.hasMFAConfigured = true;
 
-                                // Redireccionar al dashboard (ya tenemos un token válido del paso anterior)
-                                router.push("/login");
+                                // Redireccionar al dashboard
+                                router.push("/dashboard");
                                 resetForm();
                             } catch (error: any) {
-                                console.error("Error al actualizar estado MFA:", error);
-                                setError(`Error al activar MFA: ${error.message || "Error desconocido"}`);
+                                setError("Error al activar MFA");
                                 setLoading(false);
                             }
                         } else {
-                            console.error("ID de usuario no disponible para actualizar MFA");
                             setError("No se pudo identificar al usuario para activar MFA");
                             setLoading(false);
                         }
@@ -341,26 +256,18 @@ export default function StepperLogin() {
                         setLoading(false);
                     }
                 } catch (error: any) {
-                    console.error("Error verificando código MFA:", error);
-                    setError("Error al verificar código MFA: " + (error.message || "Error desconocido"));
+                    setError("Error al verificar código MFA");
                     setLoading(false);
                 }
             }
             else if (step === "mfa" && user) {
                 try {
-                    // Ya tenemos un token válido del paso de autenticación
-                    console.log("Intentando verificar código MFA para:", user.username, "código:", data.mfaCode);
-
                     const result = await verifyMFACode(user.username, data.mfaCode || "");
 
-                    console.log("Resultado de verificación MFA:", result);
-
                     if (result.success) {
-                        console.log("Verificación exitosa, redirigiendo...");
-                        router.push("/login");
+                        router.push("/dashboard");
                         resetForm();
                     } else {
-                        console.log("Verificación fallida:", result);
                         if (result.status && result.status !== "success") {
                             setError(`Verificación fallida: ${result.status}`);
                         } else {
@@ -368,12 +275,10 @@ export default function StepperLogin() {
                         }
                     }
                 } catch (error: any) {
-                    console.error("Error verificando código MFA:", error);
-                    setError("Error al verificar código MFA: " + (error.message || "Error desconocido"));
+                    setError("Error al verificar código MFA");
                 }
             }
         } catch (error: any) {
-            console.error("Error en el proceso:", error);
             setError(error.message || "Error inesperado");
         } finally {
             setLoading(false);
@@ -602,7 +507,6 @@ export default function StepperLogin() {
                 )}
 
                 <button
-
                     type="submit"
                     disabled={loading}
                     className={`text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}

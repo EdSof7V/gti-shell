@@ -6,6 +6,25 @@ import { createUser } from "@/lib/services/userService";
 import { getGroups, Group, assignUserToGroup } from "@/lib/services/groupService";
 import { updateUser } from "@/lib/services/authService";
 import axios from "axios";
+import api from "@/lib/services/api";
+
+// ID de la aplicación GTI (fijo)
+const GTI_APPLICATION_ID = "47173aa0-a92f-4ed3-b32a-5a69db0447c3";
+
+// Interfaces específicas para este componente
+interface ApplicationRole {
+  application_id: string;
+  role_id: string;
+  application_role_key: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface RoleOption {
+  value: string;
+  label: string;
+  key: string;
+}
 
 interface UserFormData {
   username: string;
@@ -43,14 +62,18 @@ const steps = [
   { title: "Confirmación", description: "Confirma creación de usuarios" },
 ];
 
-// Departamentos eliminados
-
-const roleOptions = [
-  { value: "admin", label: "Administrador" },
-  { value: "user", label: "Usuario" },
-  { value: "editor", label: "Editor" },
-  { value: "viewer", label: "Visor" },
-];
+// Función específica para este componente para obtener roles por ID de aplicación
+const getRolesByApplicationId = async (applicationId: string): Promise<ApplicationRole[]> => {
+  try {
+    console.log(`Obteniendo roles para la aplicación GTI con ID: ${applicationId}`);
+    // Usar el endpoint específico para obtener roles por ID de aplicación
+    const response = await api.get<ApplicationRole[]>(`/application-roles/application/${applicationId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error al obtener los roles para la aplicación ${applicationId}:`, error);
+    throw error;
+  }
+};
 
 export default function StepperAddUser() {
   const [currentStep, setCurrentStep] = useState(0);
@@ -61,6 +84,9 @@ export default function StepperAddUser() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(false);
+  const [rolesError, setRolesError] = useState<string | null>(null);
 
   const methods = useForm<UserFormData>({
     defaultValues: {
@@ -77,6 +103,7 @@ export default function StepperAddUser() {
 
   const { handleSubmit, register, watch, formState: { errors, isValid } } = methods;
 
+  // Cargar grupos y roles al iniciar el componente
   useEffect(() => {
     const fetchGroups = async () => {
       try {
@@ -92,7 +119,39 @@ export default function StepperAddUser() {
       }
     };
 
+    const fetchRoles = async () => {
+      try {
+        setIsLoadingRoles(true);
+        setRolesError(null);
+        
+        // Obtener roles de la aplicación GTI
+        const fetchedRoles = await getRolesByApplicationId(GTI_APPLICATION_ID);
+        console.log("Roles obtenidos para GTI:", fetchedRoles);
+        
+        // Mapear los roles al formato requerido para el selector
+        const mappedRoles: RoleOption[] = fetchedRoles.map(role => ({
+          value: role.role_id,
+          label: role.application_role_key === "GTI:ADM" ? "Admin" : "Reader",
+          key: role.application_role_key
+        }));
+        
+        setRoleOptions(mappedRoles);
+      } catch (error: any) {
+        console.error("Error al obtener roles:", error);
+        setRolesError("No se pudieron cargar los roles. Por favor, inténtelo de nuevo más tarde.");
+        
+        // Establecer roles por defecto en caso de error
+        setRoleOptions([
+          { value: "default-admin", label: "Admin", key: "GTI:ADM" },
+          { value: "default-reader", label: "Reader", key: "GTI:RDR" }
+        ]);
+      } finally {
+        setIsLoadingRoles(false);
+      }
+    };
+
     fetchGroups();
+    fetchRoles();
   }, []);
 
   const submitUserData = async (data: UserFormData) => {
@@ -274,6 +333,18 @@ export default function StepperAddUser() {
     return group ? group.name : groupId;
   };
 
+  // Obtener la etiqueta de rol por su ID
+  const getRoleLabelById = (roleId: string): string => {
+    const role = roleOptions.find(r => r.value === roleId);
+    return role ? role.label : roleId;
+  };
+
+  // Obtener la clave de rol (application_role_key) por su ID
+  const getRoleKeyById = (roleId: string): string => {
+    const role = roleOptions.find(r => r.value === roleId);
+    return role ? role.key : "";
+  };
+
   return (
     <div className="mx-auto p-8 bg-white dark:bg-gray-900 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-2 gap-6">
       <ol className="relative text-gray-500 border-s border-gray-200 dark:border-gray-700 dark:text-gray-400">
@@ -393,19 +464,33 @@ export default function StepperAddUser() {
                   Rol
                   <span className="text-red-500 ml-1">*</span>
                 </label>
-                <select
-                  {...register("role", {
-                    required: "Seleccione un rol"
-                  })}
-                  className={`bg-gray-50 border ${errors.role ? "border-red-500" : "border-gray-300"} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500`}
-                >
-                  <option value="">Seleccione un rol</option>
-                  {roleOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                {isLoadingRoles ? (
+                  <div className="flex items-center py-2">
+                    <svg className="animate-spin h-5 w-5 mr-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Cargando roles...</span>
+                  </div>
+                ) : rolesError ? (
+                  <div className="p-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-red-900/20 dark:text-red-400">
+                    {rolesError}
+                  </div>
+                ) : (
+                  <select
+                    {...register("role", {
+                      required: "Seleccione un rol"
+                    })}
+                    className={`bg-gray-50 border ${errors.role ? "border-red-500" : "border-gray-300"} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500`}
+                  >
+                    <option value="">Seleccione un rol</option>
+                    {roleOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {errors.role && (
                   <p className="mt-1 text-sm text-red-500">{errors.role.message}</p>
                 )}
@@ -508,7 +593,8 @@ export default function StepperAddUser() {
                     <li><span className="font-medium">Usuario:</span> {watch("username")}</li>
                     <li><span className="font-medium">Correo:</span> {watch("email")}</li>
                     <li><span className="font-medium">Nombre completo:</span> {watch("firstName")} {watch("lastName")}</li>
-                    <li><span className="font-medium">Rol:</span> {roleOptions.find(r => r.value === watch("role"))?.label || watch("role")}</li>
+                    <li><span className="font-medium">Rol:</span> {getRoleLabelById(watch("role"))}</li>
+                    <li><span className="font-medium">Clave de Rol:</span> {getRoleKeyById(watch("role"))}</li>
                     <li>
                       <span className="font-medium">Grupos:</span> {watch("groups")?.length > 0
                         ? watch("groups").map(groupId => getGroupNameById(groupId)).join(", ")
