@@ -408,13 +408,7 @@ const UserRolesManagement: React.FC<UserRolesManagementProps> = ({ userId }) => 
                                 Asignado {new Date(existingUserRole.created_at).toLocaleDateString()}
                               </span>
                             );
-                          } else {
-                            statusBadge = (
-                              <span className="ml-auto text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                Desactivado
-                              </span>
-                            );
-                          }
+                          } else {}
                         }
                         
                         return (

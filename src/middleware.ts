@@ -4,8 +4,8 @@ import type { NextRequest } from "next/server";
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const sessionToken = req.cookies.get("google-session-token")?.value;
-  //const sessionToken = req.cookies.get('auth_token')?.value;
+  //const sessionToken = req.cookies.get("google-session-token")?.value;
+  const sessionToken = req.cookies.get('auth_token')?.value;
 
   if (pathname === "/login" && sessionToken) {
     return NextResponse.redirect(new URL("/dashboard", req.url));

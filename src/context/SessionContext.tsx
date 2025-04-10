@@ -1,5 +1,8 @@
 "use client";
+import { UserType } from '@/lib/types/auth';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import Cookies from 'js-cookie';
+
 
 export interface SessionInfo {
   username: string;
@@ -11,12 +14,14 @@ export interface SessionInfo {
 interface SessionContextType {
   session: SessionInfo | null;
   setSession: (session: SessionInfo | null) => void;
+  logoutSession: () => Promise<void>;
   clearSession: () => void;
 }
 
 const SessionContext = createContext<SessionContextType>({
   session: null,
   setSession: () => { },
+  logoutSession: async () => { },
   clearSession: () => { },
 });
 
@@ -28,6 +33,7 @@ interface SessionProviderProps {
 }
 
 export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<UserType | null>(null);
   const [session, setSessionState] = useState<SessionInfo | null>(() => {
     if (typeof window !== 'undefined') {
       const savedSession = localStorage.getItem('session');
@@ -51,6 +57,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     localStorage.removeItem('session');
   };
 
+  const logoutSession = async (): Promise<void> => {
+    try {
+      Cookies.remove('auth_token');
+      setUser(null);
+    } catch (error) {
+      throw error;
+    }
+  };
+
   useEffect(() => {
     if (session) {
       localStorage.setItem('session', JSON.stringify(session));
@@ -58,7 +73,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [session]);
 
   return (
-    <SessionContext.Provider value={{ session, setSession, clearSession }}>
+    <SessionContext.Provider value={{ session, setSession, clearSession, logoutSession }}>
       {children}
     </SessionContext.Provider>
   );
