@@ -20,4 +20,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Comando predeterminado para ejecutar el servidor de desarrollo
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
